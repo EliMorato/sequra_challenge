@@ -1,0 +1,7 @@
+aws:
+  aws_access_key_id: ${AWS_ACCESS_KEY_ID}
+  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+  aws_role_arn: ${AWS_ROLE_ARN}
+storage:
+  bucket_name: "s3://sequra-challenge-1234/spacex-launches/"
+  sm_secret_name: "sequra/redshift-credentials"
