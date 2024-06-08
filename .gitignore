@@ -1,0 +1,14 @@
+# Terraform files
+**/.terraform/*
+*.tfstate*
+.terraform.lock.hcl
+
+# OS X files
+.history
+.DS_Store
+
+# VSCode
+**/.vscode
+
+# Snyk
+.dccache
