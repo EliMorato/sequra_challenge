@@ -1,0 +1,49 @@
+repos:
+  - repo: https://github.com/pycqa/autoflake
+    rev: v2.0.1
+    hooks:
+      - id: autoflake
+        args:
+          - "--remove-unused-variables"
+          - "--remove-all-unused-imports"
+          - "--recursive"
+          - "--in-place"
+  # python sort imports
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: [--filter-files, --profile, "black"]
+  # basic file cleanser
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+  # python code style
+  - repo: https://github.com/ambv/black
+    rev: 24.4.0
+    hooks:
+      - id: black
+        language_version: python3
+        exclude: ^.*\b(tests)\b.*$
+        args:
+          - "--fast"
+          - "--line-length=120"
+          - "--target-version=py311"
+  # python linter
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args:
+            - "--ignore=W503, E203, E501"
+            - "--max-line-length=120"
+            - "--max-complexity=40"
+  # python upgrade syntax to latest version
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.3.1
+    hooks:
+    -   id: pyupgrade
