@@ -147,4 +147,3 @@ resource "aws_redshift_cluster" "redshift-cluster" {
 
   tags = var.tags
 }
-

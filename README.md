@@ -10,4 +10,3 @@ It has an unconventional structure because its meant to contain topics that I'd 
     ├── part-3            # Resolution of Part 3: ETL Pipeline
     ├── part-4            # Resolution of Part 4: SQL Queries
     └── README.md
-

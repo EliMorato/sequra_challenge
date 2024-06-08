@@ -1,10 +1,11 @@
 """Pipeline Configuration"""
 
-from pydantic import BaseModel, Field
+import logging
 from os.path import expandvars
 from pathlib import Path
+
 import yaml
-import logging
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -13,6 +14,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %I:%M:%S%p",
 )
 CONFIG_PATH = Path(__file__).parent.parent / "conf/pipeline.yaml"
+
 
 class AWSConfig(BaseModel):
     aws_access_key_id: str = Field(..., description="AWS access key ID")
@@ -41,5 +43,6 @@ def load_config(path: Path) -> PipelineConfig:
     except yaml.error.YAMLError as exc:
         logging.error(f"Cannot load manifest in [{path}] due to [{exc}]")
         raise exc
+
 
 CONFIG = load_config(CONFIG_PATH)

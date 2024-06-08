@@ -1,8 +1,9 @@
 import json
+import logging
+
+import boto3
 import pandas as pd
 import redshift_connector as rc
-import logging
-import boto3
 from config import CONFIG
 
 logger = logging.getLogger(__name__)
@@ -32,16 +33,29 @@ def read_json_from_url(url: str) -> pd.DataFrame:
 def extract_core_information(df: pd.DataFrame) -> pd.DataFrame:
     """Extract core data from DF and keep only relevant columns"""
     # Not importing net, tbd since they all had the same value
-    df_select = df[['id', 'date_utc', 'date_precision', 'upcoming', 'cores', 'window', 'rocket', 'success', 'flight_number', 'name']]
-   
+    df_select = df[
+        [
+            "id",
+            "date_utc",
+            "date_precision",
+            "upcoming",
+            "cores",
+            "window",
+            "rocket",
+            "success",
+            "flight_number",
+            "name",
+        ]
+    ]
+
     # Extract core information
-    df_select.loc[:, 'core_ids'] = df_select['cores'].apply(lambda x: [d.get('core') for d in x])
-    core_series = df_select.set_index('id')['core_ids'].explode()
-    df_exploded_cores = pd.DataFrame(core_series.tolist(), index=core_series.index, columns=['core_id']).reset_index()
-    
+    df_select.loc[:, "core_ids"] = df_select["cores"].apply(lambda x: [d.get("core") for d in x])
+    core_series = df_select.set_index("id")["core_ids"].explode()
+    df_exploded_cores = pd.DataFrame(core_series.tolist(), index=core_series.index, columns=["core_id"]).reset_index()
+
     # Join core ids with initial selection and drop columns
-    df_joined = df_select.merge(df_exploded_cores, on='id', how='left').drop(columns=['core_ids', 'cores'])
-    df_joined['success'] = df.success.replace({0:False, 1:True})
+    df_joined = df_select.merge(df_exploded_cores, on="id", how="left").drop(columns=["core_ids", "cores"])
+    df_joined["success"] = df.success.replace({0: False, 1: True})
     return df_joined
 
 
@@ -60,16 +74,14 @@ def get_sm_credentials(secret_name) -> str:
     return json.loads(secret_value)
 
 
-def load_data_into_redshift(
-    schema_name: str, 
-    table_name: str
-):
-    """ 
+def load_data_into_redshift(schema_name: str, table_name: str):
+    """
     Load data from the provided S3 bucket to the Redshift table.
     The Redshift table will be created if it doesn't exist already.
     """
     load_statements = []
-    load_statements.append(f"""
+    load_statements.append(
+        f"""
     CREATE TABLE IF NOT EXISTS {schema_name}.{table_name}_tmp (
         id VARCHAR(256) NOT NULL ENCODE LZO,
         date_utc TIMESTAMPTZ NULL ENCODE AZ64,
@@ -80,30 +92,35 @@ def load_data_into_redshift(
         success	BOOLEAN NULL,
         flight_number BIGINT NULL,
         name VARCHAR(256) NULL,
-        core_id VARCHAR(256) NULL ENCODE LZO 
+        core_id VARCHAR(256) NULL ENCODE LZO
     )
     DISTSTYLE ALL;
-    """)
-    load_statements.append(f"""
+    """
+    )
+    load_statements.append(
+        f"""
     COPY {schema_name}.{table_name}_tmp from '{CONFIG.storage.bucket_name}'
     CREDENTIALS 'aws_iam_role={CONFIG.aws.aws_role_arn}'
     CSV
     EMPTYASNULL
     TIMEFORMAT 'YYYY-MM-DDTHH:MI:SS.000Z'
     IGNOREHEADER 1;
-    """)
+    """
+    )
     load_statements.append(f"DROP TABLE IF EXISTS {schema_name}.{table_name};")
-    load_statements.append(f"""
+    load_statements.append(
+        f"""
     ALTER TABLE {schema_name}.{table_name}_tmp RENAME TO {table_name};
-    """)
+    """
+    )
 
     redshift = get_sm_credentials(CONFIG.storage.sm_secret_name)
     conn = rc.connect(
-            host=redshift["HOST"],
-            port=redshift["PORT"],
-            database=redshift["DATABASE"],
-            user=redshift["USER"],
-            password=redshift["PASSWORD"],
+        host=redshift["HOST"],
+        port=redshift["PORT"],
+        database=redshift["DATABASE"],
+        user=redshift["USER"],
+        password=redshift["PASSWORD"],
     )
     with conn.cursor() as cursor:
         cursor.execute("begin;")
@@ -113,22 +130,25 @@ def load_data_into_redshift(
                 cursor.execute(st)
             cursor.execute("commit;")
         except Exception as e:
-            logging.error(f"Redshift data load failed. {e}")        
+            logging.error(f"Redshift data load failed. {e}")
             cursor.execute("commit;")
+
 
 def main():
     df = read_json_from_url(URL)
     final_df = extract_core_information(df)
     # Load CSV to S3
     final_df.to_csv(
-        f"{CONFIG.storage.bucket_name}data.csv", 
-        index=False,    
+        f"{CONFIG.storage.bucket_name}data.csv",
+        index=False,
         storage_options={
             "key": CONFIG.aws.aws_access_key_id,
             "secret": CONFIG.aws.aws_secret_access_key,
-        })
+        },
+    )
     # Load S3 data to Redshift
     load_data_into_redshift("public", "launches")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
